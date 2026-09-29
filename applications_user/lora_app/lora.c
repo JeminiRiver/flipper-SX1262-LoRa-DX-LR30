@@ -28,12 +28,16 @@ FuriHalSpiBusHandle spi_handle;
 const FuriHalSpiBusHandle* spi = &spi_handle;
 
 const GpioPin* const pin_beacon = &gpio_swclk;
-const GpioPin* const pin_nss0 = &gpio_ext_pa4;
+const GpioPin* const pin_txen = &gpio_ext_pa4;
+const GpioPin* const pin_rxen = &gpio_ext_pb2;
 const GpioPin* const pin_nss1 = &gpio_ext_pc0;
 const GpioPin* const pin_reset = &gpio_ext_pc1;
 const GpioPin* const pin_ant_sw = &gpio_usart_tx;
 const GpioPin* const pin_busy = &gpio_usart_rx;
 const GpioPin* const pin_dio1 = &gpio_ext_pc3;
+
+void setModeStandby(void);
+bool configSetSyncWord(uint8_t syncWord, uint8_t controlBits);
 
 bool inReceiveMode = false;
 uint8_t spiBuff[32]; //Buffer for sending SPI commands to radio
@@ -183,6 +187,7 @@ uint32_t frequencyToPLL(long rfFreq) {
 //You must set this->pllFrequency before calling this
 void updateRadioFrequency() {
     // Set PLL frequency (this is a complicated math equation. See datasheet entry for SetRfFrequency)
+    setModeStandby(); // SX126x only accepts SetRfFrequency in standby
     furi_hal_gpio_write(pin_nss1, false); // Enable radio chip-select
     furi_hal_spi_acquire(spi);
 
@@ -233,6 +238,8 @@ void updateModulationParameters() {
     // None of these actually matter that much.  You can set them to anything, and data will still show up
     // on a radio frequency monitor.
     // You just MUST call "setModulationParameters", otherwise the radio won't work at all
+
+    setModeStandby(); // SX126x only accepts SetModulationParameters in standby
 
     furi_hal_gpio_write(pin_nss1, false); // Enable radio chip-select
 
@@ -341,24 +348,6 @@ bool configSetPreset(int preset) {
 * Essential commands are found by reading the datasheet
 */
 void configureRadioEssentials() {
-    // Tell DIO2 to control the RF switch so we don't have to do it manually
-    furi_hal_gpio_write(pin_nss1, false); // Enable radio chip-select
-
-    furi_hal_spi_acquire(spi);
-
-    spiBuff[0] = 0x9D; //Opcode for "SetDIO2AsRfSwitchCtrl"
-    spiBuff[1] = 0x01; //Enable
-
-    if(furi_hal_spi_bus_tx(spi, spiBuff, 2, timeout)) {
-        furi_hal_spi_release(spi);
-    } else {
-        FURI_LOG_E(TAG, "FAILED - furi_hal_spi_bus_tx or furi_hal_spi_bus_rx failed.");
-        furi_hal_spi_release(spi);
-    }
-
-    furi_hal_gpio_write(pin_nss1, true); // Disable radio chip-select
-    furi_delay_ms(100); // Give time for the radio to process command
-
     // Just a single SPI command to set the frequency, but it's broken out
     // into its own function so we can call it on-the-fly when the config changes
     configSetFrequency(906875000); // Meshtastic US LongFast (slot 20)
@@ -429,8 +418,8 @@ void configureRadioEssentials() {
     furi_hal_spi_acquire(spi);
 
     spiBuff[0] = 0x8E; // Opcode for SetTxParams
-    spiBuff[1] =
-        22; // Power. Can be -17(0xEF) to +14x0E in Low Pow mode. -9(0xF7) to 22(0x16) in high power mode
+    // spiBuff[1] = 22; // Power. Can be -17(0xEF) to +14x0E in Low Pow mode. -9(0xF7) to 22(0x16) in high power mode
+    spiBuff[1] = 14; // Power. 14 dBm = safe on the Flipper's 3.3V rail
     spiBuff[2] = 0x02; // Ramp time. Lookup table. See table 13-41. 0x02="40uS"
 
     if(furi_hal_spi_bus_tx(spi, spiBuff, 3, timeout)) {
@@ -580,6 +569,7 @@ bool configSetSyncWord(uint8_t syncWord, uint8_t controlBits) {
     uint8_t lsb = ((syncWord & 0x0F) << 4) | (controlBits & 0x0F);
 
     // Write both bytes in a single SPI transaction
+    setModeStandby(); // SX126x only accepts register writes in standby
     furi_hal_gpio_write(pin_nss1, false); // CS low
     furi_hal_spi_acquire(spi);
 
@@ -635,6 +625,8 @@ void setPacketParams(
     spiBuff[5] = packetParam4; //0x00 = Off, 0x01 = on
     spiBuff[6] = packetParam5; //0x00 = Standard, 0x01 = Inverted
 
+    setModeStandby(); // SX126x only accepts SetPacketParameters in standby
+
     // Acquire SPI and write command
     furi_hal_gpio_write(pin_nss1, false); // Enable radio chip-select
     furi_hal_spi_acquire(spi);
@@ -689,6 +681,10 @@ void setModeReceive() {
     furi_hal_gpio_write(pin_nss1, true); // Disable radio chip-select
 
     waitForRadioCommandCompletion(100);
+
+    // Switch antenna to receive path (RXEN high, TXEN low)
+    furi_hal_gpio_write(pin_txen, false);
+    furi_hal_gpio_write(pin_rxen, true);
 
     // Tell the chip to wait for it to receive a packet.
     // Based on our previous config, this should throw an interrupt when we get a packet
@@ -762,6 +758,11 @@ void transmit(uint8_t* data, int dataLen) {
     furi_hal_gpio_write(pin_nss1, true); // Disable radio chip-select
     waitForRadioCommandCompletion(100); // Give time for radio to process the command
 
+    // Switch antenna to transmit path (TXEN high, RXEN low)
+    furi_hal_gpio_write(pin_rxen, false);
+    furi_hal_gpio_write(pin_txen, true);
+    // Transmit
+
     // Write the payload to the buffer
     // Reminder: PayloadLength is defined in setPacketParams
     furi_hal_gpio_write(pin_nss1, false); // Enable radio chip-select
@@ -802,6 +803,10 @@ void transmit(uint8_t* data, int dataLen) {
 
     waitForRadioCommandCompletion(
         transmitTimeout); // Wait for tx to complete, with a timeout so we don't wait forever
+
+    // Return antenna to receive path so the radio isn't left sitting in TX
+    furi_hal_gpio_write(pin_txen, false);
+    furi_hal_gpio_write(pin_rxen, true);
 
     // Remember that we are in Tx mode.  If we want to receive a packet, we need to switch into receiving mode
     inReceiveMode = false;
@@ -1028,12 +1033,13 @@ bool begin() {
     init_spi();
 
     furi_hal_gpio_init_simple(pin_reset, GpioModeOutputPushPull);
-    furi_hal_gpio_init_simple(pin_nss0, GpioModeOutputPushPull);
+    furi_hal_gpio_init_simple(pin_txen, GpioModeOutputPushPull);
+    furi_hal_gpio_init_simple(pin_rxen, GpioModeOutputPushPull);
     furi_hal_gpio_init_simple(pin_nss1, GpioModeOutputPushPull);
-
     furi_hal_gpio_init_simple(pin_beacon, GpioModeOutputPushPull);
-
-    furi_hal_gpio_write(pin_nss0, false);
+    
+    furi_hal_gpio_write(pin_txen, false);
+    furi_hal_gpio_write(pin_rxen, false);
     furi_hal_gpio_write(pin_nss1, true);
     furi_hal_gpio_write(pin_reset, true);
 
