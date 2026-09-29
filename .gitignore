@@ -1,0 +1,8 @@
+# Python Env
+.venv
+
+# Reports
+messages.jsonl
+nodes.json
+keys.json
+channel_stats.json
