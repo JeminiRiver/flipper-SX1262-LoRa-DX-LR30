@@ -27,7 +27,7 @@
 
 #define MAX_LINE_LENGTH 256
 
-#define CDC_PORT_NUM 1 // Port CDC 1 (second port USB)
+#define CDC_PORT_NUM 0 // Single USB CDC port (no dual-CDC)
 
 #define TIME_LEN 12
 #define DATE_LEN 14
@@ -1642,17 +1642,19 @@ static void lora_setting_item_clicked(void* context, uint32_t index) {
     }
 }
 
-// Open serial port USB (dual mode CDC)
+// Open serial port USB (single CDC mode). Frames are sent on the
+// standard CDC port so they share the same device as the CLI; keep
+// qFlipper closed while the LoRa app is running and sniffing.
 bool serial_open_port(void) {
-    if(furi_hal_usb_get_config() != &usb_cdc_dual) {
-        return furi_hal_usb_set_config(&usb_cdc_dual, NULL);
+    if(furi_hal_usb_get_config() != &usb_cdc_single) {
+        return furi_hal_usb_set_config(&usb_cdc_single, NULL);
     }
     return true;
 }
 
-// Close serial port (simple mode)
+// Close serial port (single CDC mode)
 bool serial_close_port(void) {
-    if(furi_hal_usb_get_config() == &usb_cdc_dual) {
+    if(furi_hal_usb_get_config() != &usb_cdc_single) {
         return furi_hal_usb_set_config(&usb_cdc_single, NULL);
     }
     return true;
