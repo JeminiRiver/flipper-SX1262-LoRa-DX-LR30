@@ -1564,7 +1564,7 @@ static void lora_config_meshtastic_change(VariableItem* item) {
 */
 static const char* config_freq_config_label = "Frequency";
 static const char* config_freq_entry_text = "Enter frequency (MHz)";
-static const char* config_freq_default_value = "915.0";
+static const char* config_freq_default_value = "906.875";
 static void lora_config_freq_text_updated(void* context) {
     LoRaApp* app = (LoRaApp*)context;
     bool redraw = true;
@@ -2328,7 +2328,7 @@ static LoRaApp* lora_app_alloc() {
         COUNT_OF(config_bw_values),
         lora_config_bw_change,
         app);
-    uint8_t config_bw_index = 7;
+    uint8_t config_bw_index = 8;
     variable_item_set_current_value_index(app->item_bw, config_bw_index);
     variable_item_set_current_value_text(app->item_bw, config_bw_names[config_bw_index]);
 
@@ -2339,7 +2339,7 @@ static LoRaApp* lora_app_alloc() {
         COUNT_OF(config_sf_values),
         lora_config_sf_change,
         app);
-    uint8_t config_sf_index = 3;
+    uint8_t config_sf_index = 6;
     variable_item_set_current_value_index(app->item_sf, config_sf_index);
     variable_item_set_current_value_text(app->item_sf, config_sf_names[config_sf_index]);
 
@@ -2361,7 +2361,7 @@ static LoRaApp* lora_app_alloc() {
         COUNT_OF(config_pl_values),
         lora_config_pl_change,
         app);
-    uint8_t config_pl_index = 0;
+    uint8_t config_pl_index = 1;
     variable_item_set_current_value_index(app->item_pl, config_pl_index);
     variable_item_set_current_value_text(app->item_pl, config_pl_names[config_pl_index]);
 
@@ -2372,7 +2372,7 @@ static LoRaApp* lora_app_alloc() {
         COUNT_OF(config_sw_values),
         lora_config_sw_change,
         app);
-    uint8_t config_sw_index = 0;
+    uint8_t config_sw_index = 2;
     variable_item_set_current_value_index(app->item_sw, config_sw_index);
     variable_item_set_current_value_text(app->item_sw, config_sw_names[config_sw_index]);
 
