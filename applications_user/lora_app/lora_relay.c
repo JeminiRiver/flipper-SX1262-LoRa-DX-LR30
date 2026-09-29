@@ -18,7 +18,7 @@
 
 #include <furi_hal_usb_cdc.h>
 
-#include "lora_app_icons.h"
+#include "lora_sx1262_dxlr30_icons.h"
 
 #define PATHAPP                 "apps_data/lora"
 #define PATHAPPEXT              EXT_PATH(PATHAPP)
