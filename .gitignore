@@ -2,10 +2,7 @@
 .venv
 
 # Reports
-messages.jsonl
-nodes.json
-keys.json
-channel_stats.json
+reports/**
 
 # Ignore dist files
 **/dist/**
