@@ -1,6 +1,6 @@
 App(
-    appid="lora_app",
-    name="LoRa Relay",
+    appid="lora_sx1262_dxlr30",
+    name="LoRa DX-LR30 Relay",
     apptype=FlipperAppType.EXTERNAL,
     entry_point="main_lora_app",
     stack_size=4 * 1024,
@@ -8,8 +8,8 @@ App(
         "gui",
     ],
     order=10,
-    fap_icon="cat.png",
-    fap_category="ElectronicCats",
+    fap_icon="lora.png",
+    fap_category="SubGhz",
     fap_icon_assets="assets",
-    fap_description="LoRa Sample App.  This is intended to be used as a starting point for new applications with one primary screen.",
+    fap_description="LoRa Radio App with USB Serial output for LoRa diagnostics with companion TUI.",
 )
