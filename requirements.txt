@@ -1,0 +1,6 @@
+# Dependencies for meshtasticDashboard.py
+textual
+rich
+cryptography
+meshtastic
+pyserial
