@@ -305,10 +305,11 @@ void updateModulationParameters() {
 */
 bool configSetPreset(int preset) {
     if(preset == PRESET_DEFAULT) {
-        bandwidth = 0x04; //125khz
+        // Meshtastic LongFast: 250 kHz / SF11 / CR 4-5
+        bandwidth = 0x05; //250khz
         codingRate = 0x01; //CR_4_5
-        spreadingFactor = 0x08; //SF8
-        lowDataRateOptimize = 0; //Don't optimize (used for SF12 only)
+        spreadingFactor = 0x0B; //SF11
+        lowDataRateOptimize = 0; //Off (SF11 @ 250kHz is under the LDRO threshold)
         updateModulationParameters();
         return true;
     }
@@ -360,7 +361,7 @@ void configureRadioEssentials() {
 
     // Just a single SPI command to set the frequency, but it's broken out
     // into its own function so we can call it on-the-fly when the config changes
-    configSetFrequency(915000000); // Set default frequency to 915mhz
+    configSetFrequency(906875000); // Meshtastic US LongFast (slot 20)
 
     // Set modem to LoRa (described in datasheet section 13.4.2)
     furi_hal_gpio_write(pin_nss1, false); // Enable radio chip-select
@@ -399,6 +400,7 @@ void configureRadioEssentials() {
     // Set modulation parameters is just one more SPI command, but since it
     // is often called frequently when changing the radio config, it's broken up into its own function
     configSetPreset(PRESET_DEFAULT); // Sets default modulation parameters
+    configSetSyncWord(0x2B, 0x44); // Meshtastic sync word
 
     // Set PA Config
     // See datasheet 13.1.4 for descriptions and optimal settings recommendations
